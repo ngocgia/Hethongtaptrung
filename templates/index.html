@@ -48,6 +48,10 @@
                 <i class="fas fa-search"></i>
                 TRA CỨU TÀI KHOẢN
             </a>
+            <a href="#" onclick="showImportSection()" class="nav-item">
+                <i class="fas fa-file-excel"></i>
+                TẠO TÀI KHOẢN
+            </a>
             <a href="#" onclick="syncTokens()" class="nav-item">
                 <i class="fas fa-sync"></i>
                 ĐỒNG BỘ TOKEN
@@ -77,6 +81,77 @@
                 </div>
 
                 <div id="searchResults" class="search-results"></div>
+            </div>
+        </section>
+
+        <!-- Import Section -->
+        <section class="import-section" id="importSection" style="display: none;">
+            <div class="import-container">
+                <h2>Tạo tài khoản cán bộ từ Excel</h2>
+
+                <div class="import-form" id="importForm">
+                    <div class="import-step">
+                        <h3><i class="fas fa-download"></i> Bước 1: Tải mẫu file Excel</h3>
+                        <p>Tải xuống file mẫu để biết định dạng các cột bắt buộc:</p>
+                        <button type="button" class="btn-download" onclick="downloadTemplate()">
+                            <i class="fas fa-file-excel"></i>
+                            Tải mẫu Excel
+                        </button>
+                    </div>
+
+                    <div class="import-step">
+                        <h3><i class="fas fa-edit"></i> Bước 2: Nhập thông tin vào file Excel</h3>
+                        <p>Điền thông tin cán bộ vào file Excel theo đúng định dạng. Các cột bắt buộc:</p>
+                        <ul class="required-fields">
+                            <li><code>fullname</code> - Họ tên</li>
+                            <li><code>phoneNumber</code> - Số điện thoại</li>
+                            <li><code>email</code> - Email</li>
+                            <li><code>username</code> - Tên đăng nhập (thường là CMND/CCCD)</li>
+                            <li><code>password</code> - Mật khẩu</li>
+                        </ul>
+                        <p>Các cột tùy chọn: <code>agencyParent</code>, <code>agencyDepartment</code>, <code>position</code></p>
+                    </div>
+
+                    <div class="import-step">
+                        <h3><i class="fas fa-check-square"></i> Bước 3: Chọn các Bộ cần tạo tài khoản</h3>
+                        <div class="ministry-selector">
+                            <label class="select-all">
+                                <input type="checkbox" id="selectAllMinistries" onchange="toggleAllMinistries()">
+                                <span>Chọn tất cả</span>
+                            </label>
+                            <div class="ministry-checkboxes" id="ministryCheckboxes">
+                                {% for ministry in ministries %}
+                                <label class="ministry-checkbox">
+                                    <input type="checkbox" class="ministry-select" value="{{ ministry.id }}">
+                                    <span>{{ ministry.name }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="import-step">
+                        <h3><i class="fas fa-upload"></i> Bước 4: Upload file Excel</h3>
+                        <div class="file-upload">
+                            <input type="file" id="excelFile" accept=".xlsx,.xls" style="display: none;" onchange="handleFileSelect(this)">
+                            <button type="button" class="btn-upload" onclick="document.getElementById('excelFile').click()">
+                                <i class="fas fa-folder-open"></i>
+                                Chọn file Excel
+                            </button>
+                            <span id="selectedFileName" class="file-name">Chưa chọn file</span>
+                        </div>
+                    </div>
+
+                    <div class="import-step">
+                        <h3><i class="fas fa-play"></i> Bước 5: Thực hiện tạo tài khoản</h3>
+                        <button type="button" class="btn-import" onclick="importAccounts()" id="btnImport" disabled>
+                            <i class="fas fa-cogs"></i>
+                            Tạo tài khoản
+                        </button>
+                    </div>
+                </div>
+
+                <div id="importResults" class="import-results"></div>
             </div>
         </section>
 
@@ -136,6 +211,166 @@
             if (searchSection.style.display === 'block') {
                 document.getElementById('searchKeyword').focus();
             }
+        }
+
+        function showImportSection() {
+            const importSection = document.getElementById('importSection');
+            importSection.style.display = importSection.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function toggleAllMinistries() {
+            const selectAll = document.getElementById('selectAllMinistries').checked;
+            const checkboxes = document.querySelectorAll('.ministry-select');
+            checkboxes.forEach(cb => cb.checked = selectAll);
+            checkImportForm();
+        }
+
+        function handleFileSelect(input) {
+            const fileName = input.files[0]?.name || 'Chưa chọn file';
+            document.getElementById('selectedFileName').textContent = fileName;
+            checkImportForm();
+        }
+
+        function checkImportForm() {
+            const fileSelected = document.getElementById('excelFile').files.length > 0;
+            const anyMinistrySelected = document.querySelectorAll('.ministry-select:checked').length > 0;
+            document.getElementById('btnImport').disabled = !(fileSelected && anyMinistrySelected);
+        }
+
+        // Thêm event listener cho các checkbox bộ
+        document.addEventListener('DOMContentLoaded', function() {
+            checkTokenStatus();
+
+            document.querySelectorAll('.ministry-select').forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const allChecked = document.querySelectorAll('.ministry-select:checked').length === document.querySelectorAll('.ministry-select').length;
+                    document.getElementById('selectAllMinistries').checked = allChecked;
+                    checkImportForm();
+                });
+            });
+        });
+
+        function downloadTemplate() {
+            const template = [
+                ['fullname', 'phoneNumber', 'email', 'username', 'password', 'agencyParent', 'agencyDepartment', 'position'],
+                ['Nguyễn Văn A', '0123456789', 'nguyenvana@example.com', '001234567890', 'Password@123', 'Bộ Giáo dục', 'Vụ Giáo dục Đại học', 'Chuyên viên'],
+                ['Trần Thị B', '0987654321', 'tranthib@example.com', '001987654321', 'Password@456', 'Bộ Y tế', 'Cục Quản lý Dược', 'Chuyên viên']
+            ];
+
+            let csvContent = template.map(row => row.join(',')).join('\n');
+            const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'mau_tai_khoan_can_bo.csv';
+            link.click();
+        }
+
+        async function importAccounts() {
+            const fileInput = document.getElementById('excelFile');
+            const selectedMinistries = Array.from(document.querySelectorAll('.ministry-select:checked')).map(cb => cb.value);
+
+            if (fileInput.files.length === 0) {
+                alert('Vui lòng chọn file Excel!');
+                return;
+            }
+
+            if (selectedMinistries.length === 0) {
+                alert('Vui lòng chọn ít nhất một Bộ!');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            formData.append('ministries', selectedMinistries.join(','));
+
+            const resultsDiv = document.getElementById('importResults');
+            const btnImport = document.getElementById('btnImport');
+
+            btnImport.disabled = true;
+            btnImport.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
+            resultsDiv.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Đang tạo tài khoản, vui lòng đợi...</div>';
+
+            try {
+                const response = await fetch('/import-accounts', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div class="error-message">${data.error}</div>`;
+                    return;
+                }
+
+                displayImportResults(data);
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error-message">Lỗi khi import: ${error.message}</div>`;
+            } finally {
+                btnImport.disabled = false;
+                btnImport.innerHTML = '<i class="fas fa-cogs"></i> Tạo tài khoản';
+            }
+        }
+
+        function displayImportResults(data) {
+            const resultsDiv = document.getElementById('importResults');
+
+            let html = `<div class="import-summary">`;
+            html += `<h3>Kết quả tạo tài khoản</h3>`;
+            html += `<div class="summary-stats">`;
+            html += `<span><i class="fas fa-users"></i> Tổng số tài khoản: <strong>${data.summary.total_accounts}</strong></span> | `;
+            html += `<span><i class="fas fa-tasks"></i> Tổng số thao tác: <strong>${data.summary.total_operations}</strong></span> | `;
+            html += `<span style="color: green;"><i class="fas fa-check-circle"></i> Thành công: <strong>${data.summary.success_count}</strong></span> | `;
+            html += `<span style="color: red;"><i class="fas fa-times-circle"></i> Lỗi: <strong>${data.summary.error_count}</strong></span>`;
+            html += `</div>`;
+            html += `</div>`;
+
+            html += '<div class="import-details">';
+
+            data.results.forEach((result, index) => {
+                html += `
+                    <div class="account-result-item">
+                        <div class="account-result-header">
+                            <h4>Dòng ${result.row}: ${result.account.fullname}</h4>
+                            <span class="account-info">Username: ${result.account.username}</span>
+                        </div>
+                        <div class="ministry-results">
+                `;
+
+                result.ministries.forEach(m => {
+                    let statusClass = '';
+                    let icon = '';
+
+                    if (m.status === 'success') {
+                        statusClass = 'success';
+                        icon = '<i class="fas fa-check-circle"></i>';
+                    } else if (m.status === 'no_token') {
+                        statusClass = 'no-token';
+                        icon = '<i class="fas fa-key"></i>';
+                    } else if (m.status === 'token_expired') {
+                        statusClass = 'token-expired';
+                        icon = '<i class="fas fa-clock"></i>';
+                    } else {
+                        statusClass = 'error';
+                        icon = '<i class="fas fa-times-circle"></i>';
+                    }
+
+                    html += `
+                        <div class="ministry-result ${statusClass}">
+                            <span class="ministry-name">${m.ministry_name}</span>
+                            <span class="ministry-status">${icon} ${m.message}</span>
+                        </div>
+                    `;
+                });
+
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            resultsDiv.innerHTML = html;
         }
 
         async function searchAccount() {
