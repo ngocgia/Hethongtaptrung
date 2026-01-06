@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ Thống Điều Phối Giải Quyết Thủ Tục Hành Chính (QUẢN TRỊ)</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header>
+        <div class="header-container">
+            <div class="header-left">
+                <div class="header-text">
+                    <h1>HỆ THỐNG ĐIỀU PHỐI QUẢN TRỊ IGATE</h1>
+                    <p class="subtitle">Vì nền hành chính phục vụ</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="user-profile">
+                    <div class="avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="nav-container">
+            <a href="/" class="nav-item active">
+                <i class="fas fa-home"></i>
+                TRANG CHỦ
+            </a>
+        </div>
+    </nav>
+
+
+    <!-- Main Content -->
+    <main>
+        <section class="ministries-section">
+            <div class="ministries-container">
+                <h3>Lỗi tắt vào hệ thống quản trị các Bộ</h3>
+                <div class="ministries-grid" id="ministriesGrid">
+                    {% for ministry in ministries %}
+                    <div class="ministry-card" data-id="{{ ministry.id }}">
+                        <a href="{{ ministry.url }}" target="_blank" rel="noopener noreferrer">{{ ministry.name }}</a>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-container">
+            <p>&copy; 2026 GiaVDN.KTM</p>
+        </div>
+    </footer>
+
+    <script>
+        // Tab switching functionality
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', function() {
+                tabBtns.forEach(b => b.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Search functionality
+        const searchForm = document.querySelector('.search-form');
+        const searchInput = document.getElementById('searchInput');
+        const ministriesGrid = document.getElementById('ministriesGrid');
+        const ministryCards = document.querySelectorAll('.ministry-card');
+
+        searchForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const keyword = searchInput.value.toLowerCase();
+
+            ministryCards.forEach(card => {
+                const name = card.querySelector('h4').textContent.toLowerCase();
+                if (name.includes(keyword)) {
+                    card.style.display = 'block';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+
+        // Clear search when input is empty
+        searchInput.addEventListener('input', function() {
+            if (this.value === '') {
+                ministryCards.forEach(card => {
+                    card.style.display = 'block';
+                });
+            }
+        });
+    </script>
+</body>
+</html>
