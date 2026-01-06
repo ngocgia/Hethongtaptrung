@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hệ Thống Điều Phối Giải Quyết Thủ Tục Hành Chính (QUẢN TRỊ)</title>
+    <title>Hệ Thống Điều Phối Quản Trị IGATE</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -22,6 +22,16 @@
                     <div class="avatar">
                         <i class="fas fa-user"></i>
                     </div>
+                    <div class="user-info">
+                        <span class="user-name">{{ user.full_name or user.username }}</span>
+                        <span class="user-org">Đang đăng nhập</span>
+                        <i class="fas fa-chevron-down dropdown-arrow"></i>
+                    </div>
+                    <div class="logout-btn">
+                        <a href="{{ url_for('logout') }}" title="Đăng xuất">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -34,19 +44,57 @@
                 <i class="fas fa-home"></i>
                 TRANG CHỦ
             </a>
+            <a href="#" onclick="showSearchSection()" class="nav-item">
+                <i class="fas fa-search"></i>
+                TRA CỨU TÀI KHOẢN
+            </a>
+            <a href="#" onclick="syncTokens()" class="nav-item">
+                <i class="fas fa-sync"></i>
+                ĐỒNG BỘ TOKEN
+            </a>
+            <a href="#" onclick="viewTokens()" class="nav-item">
+                <i class="fas fa-key"></i>
+                XEM TOKEN
+            </a>
         </div>
     </nav>
 
-
     <!-- Main Content -->
     <main>
+        <!-- Search Section -->
+        <section class="search-section" id="searchSection" style="display: none;">
+            <div class="search-container">
+                <h2>Tra cứu tài khoản trên các Bộ</h2>
+
+                <div class="search-form">
+                    <div class="search-input-group">
+                        <input type="text" id="searchKeyword" placeholder="Nhập tên tài khoản, CMND/CCCD, email, số điện thoại..." autofocus>
+                        <button type="button" class="btn-search" onclick="searchAccount()">
+                            <i class="fas fa-search"></i>
+                            Tra cứu
+                        </button>
+                    </div>
+                </div>
+
+                <div id="searchResults" class="search-results"></div>
+            </div>
+        </section>
+
         <section class="ministries-section">
             <div class="ministries-container">
-                <h3>Lỗi tắt vào hệ thống quản trị các Bộ</h3>
+                <h3>Truy cập vào hệ thống quản trị các Bộ</h3>
                 <div class="ministries-grid" id="ministriesGrid">
                     {% for ministry in ministries %}
                     <div class="ministry-card" data-id="{{ ministry.id }}">
-                        <a href="{{ ministry.url }}" target="_blank" rel="noopener noreferrer">{{ ministry.name }}</a>
+                        <a href="{{ ministry.url }}" target="_blank" rel="noopener noreferrer">
+                            <div class="ministry-icon">
+                                <i class="fas fa-building"></i>
+                            </div>
+                            <h4>{{ ministry.name }}</h4>
+                            <span class="token-status" id="status-{{ ministry.id }}">
+                                <i class="fas fa-circle-notch fa-spin"></i>
+                            </span>
+                        </a>
                     </div>
                     {% endfor %}
                 </div>
@@ -61,44 +109,419 @@
         </div>
     </footer>
 
+    <!-- Token Modal -->
+    <div id="tokenModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Danh sách Token</h3>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="tokenList">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> Đang tải...
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // Tab switching functionality
-        const tabBtns = document.querySelectorAll('.tab-btn');
-        tabBtns.forEach(btn => {
-            btn.addEventListener('click', function() {
-                tabBtns.forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-            });
+        // Load token status on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkTokenStatus();
         });
 
-        // Search functionality
-        const searchForm = document.querySelector('.search-form');
-        const searchInput = document.getElementById('searchInput');
-        const ministriesGrid = document.getElementById('ministriesGrid');
-        const ministryCards = document.querySelectorAll('.ministry-card');
+        function showSearchSection() {
+            const searchSection = document.getElementById('searchSection');
+            searchSection.style.display = searchSection.style.display === 'none' ? 'block' : 'none';
+            if (searchSection.style.display === 'block') {
+                document.getElementById('searchKeyword').focus();
+            }
+        }
 
-        searchForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            const keyword = searchInput.value.toLowerCase();
+        async function searchAccount() {
+            console.log('searchAccount called');
+            const keyword = document.getElementById('searchKeyword').value.trim();
+            const resultsDiv = document.getElementById('searchResults');
 
-            ministryCards.forEach(card => {
-                const name = card.querySelector('h4').textContent.toLowerCase();
-                if (name.includes(keyword)) {
-                    card.style.display = 'block';
+            console.log('Keyword:', keyword);
+
+            if (!keyword) {
+                alert('Vui lòng nhập từ khóa tìm kiếm!');
+                return;
+            }
+
+            resultsDiv.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-spin"></i> Đang tra cứu trên tất cả các Bộ...</div>';
+
+            try {
+                const formData = new FormData();
+                formData.append('keyword', keyword);
+
+                console.log('Sending request to /lookup-account');
+
+                const response = await fetch('/lookup-account', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                console.log('Response status:', response.status);
+
+                const data = await response.json();
+
+                console.log('Response data:', data);
+
+                if (data.error) {
+                    resultsDiv.innerHTML = `<div class="error-message">${data.error}</div>`;
+                    return;
+                }
+
+                displayAllMinistriesResults(data.results, keyword);
+            } catch (error) {
+                console.error('Error:', error);
+                resultsDiv.innerHTML = `<div class="error-message">Lỗi khi tra cứu: ${error.message}</div>`;
+            }
+        }
+
+        function displayAllMinistriesResults(results, keyword) {
+            const resultsDiv = document.getElementById('searchResults');
+
+            // Thống kê
+            let foundCount = 0;
+            let notFoundCount = 0;
+            let noTokenCount = 0;
+            let tokenExpiredCount = 0;
+            let errorCount = 0;
+
+            results.forEach(r => {
+                if (r.found) foundCount++;
+                else if (r.status === 'success') notFoundCount++;
+                else if (r.status === 'no_token') noTokenCount++;
+                else if (r.status === 'token_expired') tokenExpiredCount++;
+                else errorCount++;
+            });
+
+            let html = `<div class="search-summary">`;
+            html += `<h3>Kết quả tra cứu: "${keyword}"</h3>`;
+            html += `<div class="summary-stats">`;
+            html += `<span style="color: green;"><i class="fas fa-check-circle"></i> Tìm thấy: <strong>${foundCount}</strong></span> | `;
+            html += `<span style="color: orange;"><i class="fas fa-times-circle"></i> Không tìm thấy: <strong>${notFoundCount}</strong></span> | `;
+            html += `<span style="color: red;"><i class="fas fa-exclamation-triangle"></i> Lỗi: <strong>${errorCount}</strong></span> | `;
+            html += `<span style="color: gray;"><i class="fas fa-key"></i> Chưa có token: <strong>${noTokenCount}</strong></span> | `;
+            html += `<span style="color: purple;"><i class="fas fa-clock"></i> Token hết hạn: <strong>${tokenExpiredCount}</strong></span>`;
+            html += `</div>`;
+            html += `</div>`;
+
+            html += '<div class="results-grid">';
+
+            results.forEach(result => {
+                let statusClass = '';
+                let statusIcon = '';
+                let statusText = '';
+
+                if (result.found) {
+                    statusClass = 'found';
+                    statusIcon = '<i class="fas fa-check-circle"></i>';
+                    statusText = `Tìm thấy ${result.accounts.length} tài khoản`;
+
+                    html += `
+                        <div class="result-card ${statusClass}">
+                            <div class="result-header">
+                                <h4>${result.ministry_name}</h4>
+                                <span class="result-status ${statusClass}">${statusIcon} ${statusText}</span>
+                            </div>
+                            <div class="result-body">
+                    `;
+
+                    result.accounts.forEach(account => {
+                        html += `
+                            <div class="account-item">
+                                <p><i class="fas fa-user"></i> <strong>Họ tên:</strong> ${account.fullname || 'N/A'}</p>
+                                <p><i class="fas fa-id-card"></i> <strong>Username:</strong> ${account.account.username[0].value || 'N/A'}</p>
+                                ${account.email[0].value ? `<p><i class="fas fa-envelope"></i> <strong>Email:</strong> ${account.email[0].value}</p>` : ''}
+                                ${account.phoneNumber[0].value ? `<p><i class="fas fa-phone"></i> <strong>Điện thoại:</strong> ${account.phoneNumber[0].value}</p>` : ''}
+                                ${account.account.username[0].value ? `<p><i class="fas fa-fingerprint"></i> <strong>CMND/CCCD:</strong> ${account.identity.number}</p>` : ''}
+                                ${account.experience[0].agency.name ? `<p><i class="fas fa-building"></i> <strong>Đơn vị:</strong> ${account.experience[0].agency.parent.name}</p>` : ''}
+                                ${account.type !== undefined ? `<p><i class="fas fa-power-off"></i> <strong>Kiểu:</strong> ${account.type === 3 ? '<span style="color: green;">Cán bộ</span>' : '<span style="color: green;">Công dân</span>'}</p>` : ''}
+                            </div>
+                        `;
+                    });
+
+                    html += `
+                            </div>
+                        </div>
+                    `;
+                } else if (result.status === 'success') {
+                    statusClass = 'not-found';
+                    statusIcon = '<i class="fas fa-times-circle"></i>';
+                    statusText = 'Không tìm thấy tài khoản';
+
+                    html += `
+                        <div class="result-card ${statusClass}">
+                            <div class="result-header">
+                                <h4>${result.ministry_name}</h4>
+                                <span class="result-status ${statusClass}">${statusIcon} ${statusText}</span>
+                            </div>
+                            <div class="result-body">
+                                <p class="not-found-message">Không tìm thấy tài khoản với từ khóa "${keyword}"</p>
+                            </div>
+                        </div>
+                    `;
+                } else if (result.status === 'no_token') {
+                    statusClass = 'no-token';
+                    statusIcon = '<i class="fas fa-key"></i>';
+                    statusText = 'Chưa đồng bộ token';
+
+                    html += `
+                        <div class="result-card ${statusClass}">
+                            <div class="result-header">
+                                <h4>${result.ministry_name}</h4>
+                                <span class="result-status ${statusClass}">${statusIcon} ${statusText}</span>
+                            </div>
+                            <div class="result-body">
+                                <p class="warning-message">Bạn cần đồng bộ token cho Bộ này trước khi tra cứu.</p>
+                            </div>
+                        </div>
+                    `;
+                } else if (result.status === 'token_expired') {
+                    statusClass = 'token-expired';
+                    statusIcon = '<i class="fas fa-clock"></i>';
+                    statusText = 'Token đã hết hạn';
+
+                    html += `
+                        <div class="result-card ${statusClass}">
+                            <div class="result-header">
+                                <h4>${result.ministry_name}</h4>
+                                <span class="result-status ${statusClass}">${statusIcon} ${statusText}</span>
+                            </div>
+                            <div class="result-body">
+                                <p class="warning-message">Token đã hết hạn. Vui lòng đồng bộ lại token.</p>
+                            </div>
+                        </div>
+                    `;
                 } else {
-                    card.style.display = 'none';
+                    statusClass = 'error';
+                    statusIcon = '<i class="fas fa-exclamation-triangle"></i>';
+                    statusText = 'Lỗi';
+
+                    html += `
+                        <div class="result-card ${statusClass}">
+                            <div class="result-header">
+                                <h4>${result.ministry_name}</h4>
+                                <span class="result-status ${statusClass}">${statusIcon} ${statusText}</span>
+                            </div>
+                            <div class="result-body">
+                                <p class="error-message">${result.message}</p>
+                            </div>
+                        </div>
+                    `;
                 }
             });
-        });
 
-        // Clear search when input is empty
-        searchInput.addEventListener('input', function() {
-            if (this.value === '') {
-                ministryCards.forEach(card => {
-                    card.style.display = 'block';
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+        }
+
+        function displaySearchResults(results, keyword) {
+            const resultsDiv = document.getElementById('searchResults');
+
+            let foundCount = 0;
+            let notFoundCount = 0;
+            let errorCount = 0;
+
+            results.forEach(r => {
+                if (r.found) foundCount++;
+                else if (r.status === 'success') notFoundCount++;
+                else errorCount++;
+            });
+
+            let html = `<div class="search-summary">`;
+            html += `<h3>Kết quả tra cứu: "${keyword}"</h3>`;
+            html += `<p>Tìm thấy: <strong style="color: green;">${foundCount}</strong> | `;
+            html += `Không tìm thấy: <strong style="color: orange;">${notFoundCount}</strong> | `;
+            html += `Lỗi: <strong style="color: red;">${errorCount}</strong></p>`;
+            html += `</div>`;
+
+            html += '<div class="results-grid">';
+
+            results.forEach(result => {
+                let statusClass = '';
+                let statusIcon = '';
+                let statusText = '';
+
+                if (result.found) {
+                    statusClass = 'found';
+                    statusIcon = '<i class="fas fa-check-circle"></i>';
+                    statusText = 'Đã có tài khoản';
+
+                    const account = result.account;
+                    html += `
+                        <div class="result-card ${statusClass}">
+                            <div class="result-header">
+                                <h4>${result.ministry_name}</h4>
+                                <span class="result-status ${statusClass}">${statusIcon} ${statusText}</span>
+                            </div>
+                            <div class="result-body">
+                                <p><i class="fas fa-user"></i> <strong>Họ tên:</strong> ${account.fullname || 'N/A'}</p>
+                                <p><i class="fas fa-id-card"></i> <strong>Username:</strong> ${account.username || 'N/A'}</p>
+                                ${account.email ? `<p><i class="fas fa-envelope"></i> <strong>Email:</strong> ${account.email}</p>` : ''}
+                                ${account.phone ? `<p><i class="fas fa-phone"></i> <strong>Điện thoại:</strong> ${account.phone}</p>` : ''}
+                            </div>
+                        </div>
+                    `;
+                } else if (result.status === 'success') {
+                    statusClass = 'not-found';
+                    statusIcon = '<i class="fas fa-times-circle"></i>';
+                    statusText = 'Không tìm thấy';
+
+                    html += `
+                        <div class="result-card ${statusClass}">
+                            <div class="result-header">
+                                <h4>${result.ministry_name}</h4>
+                                <span class="result-status ${statusClass}">${statusIcon} ${statusText}</span>
+                            </div>
+                            <div class="result-body">
+                                <p class="not-found-message">Không tìm thấy tài khoản với từ khóa "${keyword}"</p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    statusClass = 'error';
+                    statusIcon = '<i class="fas fa-exclamation-triangle"></i>';
+                    statusText = result.message || 'Lỗi';
+
+                    html += `
+                        <div class="result-card ${statusClass}">
+                            <div class="result-header">
+                                <h4>${result.ministry_name}</h4>
+                                <span class="result-status ${statusClass}">${statusIcon} ${statusText}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+        }
+
+        async function checkTokenStatus() {
+            try {
+                const response = await fetch('/tokens');
+                const data = await response.json();
+
+                data.tokens.forEach(token => {
+                    const statusEl = document.getElementById(`status-${token.ministry_id}`);
+                    if (statusEl) {
+                        if (token.has_token) {
+                            const expiresAt = new Date(token.expires_at);
+                            const now = new Date();
+                            const isExpired = expiresAt < now;
+
+                            if (isExpired) {
+                                statusEl.innerHTML = '<i class="fas fa-exclamation-triangle" style="color: orange;"></i> Hết hạn';
+                            } else {
+                                statusEl.innerHTML = '<i class="fas fa-check-circle" style="color: green;"></i> Đã có token';
+                            }
+                        } else {
+                            statusEl.innerHTML = '<i class="fas fa-times-circle" style="color: red;"></i> Chưa đồng bộ';
+                        }
+                    }
                 });
+            } catch (error) {
+                console.error('Error checking token status:', error);
             }
-        });
+        }
+
+        async function syncTokens() {
+            if (!confirm('Bạn có muốn đồng bộ token cho tất cả các Bộ?')) {
+                return;
+            }
+
+            const btn = event.target;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> ĐANG ĐỒNG BỘ...';
+            btn.disabled = true;
+
+            try {
+                const response = await fetch('/sync-tokens', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.json();
+
+                let successCount = 0;
+                let failCount = 0;
+
+                data.results.forEach(result => {
+                    if (result.status === 'success') {
+                        successCount++;
+                    } else {
+                        failCount++;
+                    }
+                });
+
+                alert(`Đồng bộ hoàn tất!\n\nThành công: ${successCount}\nThất bại: ${failCount}`);
+
+                checkTokenStatus();
+            } catch (error) {
+                alert('Lỗi khi đồng bộ token: ' + error.message);
+            } finally {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+            }
+        }
+
+        async function viewTokens() {
+            document.getElementById('tokenModal').style.display = 'block';
+
+            try {
+                const response = await fetch('/tokens');
+                const data = await response.json();
+
+                let html = '<table style="width: 100%; border-collapse: collapse;">';
+                html += '<thead><tr style="background: #f5f5f5;">';
+                html += '<th style="padding: 10px; border: 1px solid #ddd;">STT</th>';
+                html += '<th style="padding: 10px; border: 1px solid #ddd;">Bộ</th>';
+                html += '<th style="padding: 10px; border: 1px solid #ddd;">Trạng thái</th>';
+                html += '<th style="padding: 10px; border: 1px solid #ddd;">Hết hạn</th>';
+                html += '</tr></thead><tbody>';
+
+                data.tokens.forEach((token, index) => {
+                    html += '<tr>';
+                    html += `<td style="padding: 10px; border: 1px solid #ddd;">${index + 1}</td>`;
+                    html += `<td style="padding: 10px; border: 1px solid #ddd;">${token.ministry_name}</td>`;
+
+                    if (token.has_token) {
+                        html += '<td style="padding: 10px; border: 1px solid #ddd; color: green;">✓ Có token</td>';
+                        const expiresAt = new Date(token.expires_at);
+                        html += `<td style="padding: 10px; border: 1px solid #ddd;">${expiresAt.toLocaleString('vi-VN')}</td>`;
+                    } else {
+                        html += '<td style="padding: 10px; border: 1px solid #ddd; color: red;">✗ Chưa có</td>';
+                        html += '<td style="padding: 10px; border: 1px solid #ddd;">-</td>';
+                    }
+
+                    html += '</tr>';
+                });
+
+                html += '</tbody></table>';
+                document.getElementById('tokenList').innerHTML = html;
+            } catch (error) {
+                document.getElementById('tokenList').innerHTML = '<p style="color: red;">Lỗi tải danh sách token</p>';
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('tokenModal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('tokenModal');
+            if (event.target === modal) {
+                modal.style.display = 'none';
+            }
+        }
     </script>
 </body>
 </html>

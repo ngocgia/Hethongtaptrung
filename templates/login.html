@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập - Hệ Thống Điều Phối Quản Trị IGATE</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .login-header h1 {
+            color: var(--primary-brown);
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .login-header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--secondary-brown);
+            box-shadow: 0 0 0 3px rgba(160, 82, 45, 0.1);
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, var(--secondary-brown), var(--primary-brown));
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .error-message {
+            background-color: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .info-box {
+            background-color: #f0f7ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            border-left: 4px solid var(--secondary-brown);
+        }
+
+        .info-box strong {
+            color: var(--primary-brown);
+        }
+
+        .ministries-list {
+            margin-top: 15px;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .ministries-list ul {
+            list-style: none;
+            padding: 0;
+            margin: 10px 0 0 0;
+        }
+
+        .ministries-list li {
+            padding: 3px 0;
+        }
+
+        .ministries-list li::before {
+            content: "• ";
+            color: var(--secondary-brown);
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-header">
+            <i class="fas fa-shield-alt" style="font-size: 50px; color: var(--primary-brown); margin-bottom: 15px;"></i>
+            <h1>HỆ THỐNG IGATE</h1>
+            <p>Đăng nhập để tiếp tục</p>
+        </div>
+
+        {% if error %}
+        <div class="error-message">
+            <i class="fas fa-exclamation-circle"></i>
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="POST">
+            <div class="form-group">
+                <label for="username">
+                    <i class="fas fa-user"></i> Tên đăng nhập
+                </label>
+                <input type="text" id="username" name="username" required autofocus
+                       placeholder="Username các Bộ">
+            </div>
+
+            <div class="form-group">
+                <label for="password">
+                    <i class="fas fa-lock"></i> Mật khẩu
+                </label>
+                <input type="password" id="password" name="password" required
+                       placeholder="Mật khẩu các Bộ">
+            </div>
+
+            <button type="submit" class="btn-login">
+                <i class="fas fa-sign-in-alt"></i> Đăng nhập
+            </button>
+        </form>
+
+        <div class="info-box">
+            <strong><i class="fas fa-info-circle"></i> Thông tin:</strong><br>
+            Sử dụng tài khoản DVC để đăng nhập. Hệ thống sẽ xác thực với ít nhất 1 Bộ.
+
+            <div class="ministries-list">
+                <strong>Danh sách 7 Bộ:</strong>
+                <ul>
+                    <li>Bộ Y tế</li>
+                    <li>Bộ Giáo dục và Đào tạo</li>
+                    <li>Bộ Nội vụ</li>
+                    <li>Bộ Khoa học Công nghệ</li>
+                    <li>Bộ Xây dựng</li>
+                    <li>Bộ Nông nghiệp và Môi trường</li>
+                    <li>Bộ Công Thương</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
