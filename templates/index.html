@@ -238,7 +238,7 @@
                                 <p><i class="fas fa-id-card"></i> <strong>Username:</strong> ${account.account.username[0].value || 'N/A'}</p>
                                 ${account.email[0].value ? `<p><i class="fas fa-envelope"></i> <strong>Email:</strong> ${account.email[0].value}</p>` : ''}
                                 ${account.phoneNumber[0].value ? `<p><i class="fas fa-phone"></i> <strong>Điện thoại:</strong> ${account.phoneNumber[0].value}</p>` : ''}
-                                ${account.account.username[0].value ? `<p><i class="fas fa-fingerprint"></i> <strong>CMND/CCCD:</strong> ${account.identity.number}</p>` : ''}
+                                ${account.account.username[0].value ? `<p><i class="fas fa-fingerprint"></i> <strong>CMND/CCCD:</strong> ${account.identity?.number}</p>` : ''}
                                 ${account.experience[0].agency.name ? `<p><i class="fas fa-building"></i> <strong>Đơn vị:</strong> ${account.experience[0].agency.parent.name}</p>` : ''}
                                 ${account.type !== undefined ? `<p><i class="fas fa-power-off"></i> <strong>Kiểu:</strong> ${account.type === 3 ? '<span style="color: green;">Cán bộ</span>' : '<span style="color: green;">Công dân</span>'}</p>` : ''}
                             </div>
